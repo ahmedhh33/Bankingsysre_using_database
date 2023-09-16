@@ -48,39 +48,7 @@ namespace cSharp_BankSystem
                                 CurrencyConverter();
                                 break;
                             case "3":
-                                Console.Write("Enter your name: ");
-                                string name = Console.ReadLine();
-                                Console.Write("Enter your email: ");
-                                string email = Console.ReadLine();
-                                Console.WriteLine("Please enter a password that meets the criteria");
-                                Console.WriteLine("Password must be at least 8 characters long and contain uppercase letter,lowercase letter,number, and symbol");
-                                string password = Console.ReadLine();
-                                if (user.IsStrongPassword(password))
-                                {
-                                    Console.WriteLine("");
-                                }
-                                else
-                                {
-                                    Console.WriteLine("Password does not meet the criteria. Please try again.");
-                                }
-
-                                if (bankSystem.RegisterUser(name, email, password))
-                                {
-                                    string RegisteringUser = "insert into Users (userName,email,userPassword) values(@name,@email,@password);";
-                                    SqlCommand command = new SqlCommand(RegisteringUser, sqlConnection);
-                                    command.Parameters.AddWithValue("@name", name);
-                                    command.Parameters.AddWithValue("@email", email);
-                                    command.Parameters.AddWithValue("@password", password);
-                                    command.ExecuteNonQuery();
-
-
-                                    Console.WriteLine("Registration successful.");
-                                }
-                                else
-                                {
-                                    Console.WriteLine("Registration failed. User with this email already exists.");
-                                }
-                                Console.Clear();
+                                regestringuser();
                                 break;
 
                             case "4":
@@ -92,6 +60,7 @@ namespace cSharp_BankSystem
                                 if (bankSystem.Login(loginEmail, loginPassword))
                                 {
                                     Console.WriteLine("Login successful.");
+
                                     bankSystem.HandleLoggedInUser(loginEmail);
                                 }
                                 else
@@ -133,6 +102,37 @@ namespace cSharp_BankSystem
                     // 13 after all we need to close the connection with database
                     sqlConnection.Close();
                 }
+            }
+        }
+        private static void regestringuser()
+        {
+            BankSystem bankSystem = new BankSystem();
+            User user = new User();
+
+            Console.Write("Enter your name: ");
+            string name = Console.ReadLine();
+            Console.Write("Enter your email: ");
+            string email = Console.ReadLine();
+            Console.Write("Please enter a password that meets the criteria");
+            Console.Write("Password must be at least 8 characters long and contain uppercase letter,lowercase letter,number, and symbol : ");
+            string password = Console.ReadLine();
+            if (user.IsStrongPassword(password))
+            {
+                Console.WriteLine("");
+            }
+            else
+            {
+                Console.WriteLine("Password does not meet the criteria. Please try again.");
+            }
+            
+            if (bankSystem.RegisterUser(name, email, password))
+            {
+                Console.WriteLine("Registration successful.");
+                bankSystem.HandleLoggedInUser(email);
+            }
+            else
+            {
+                Console.WriteLine("Registration failed. User with this email already exists.");
             }
         }
         static async Task ViewExchangeRates()

@@ -31,14 +31,47 @@ namespace cSharp_BankSystem
         
         public bool RegisterUser(string name, string email, string password)
         {
-            // Check if a user with the given email already exists.
-            if (users.Any(u => u.Email == email))
-            {
-                return false; // User with this email already exists.
-            }
 
-            User newUser = new User(name, email, password);
-            return true; // Registration successful.
+            
+            try
+            { connection.Open(); 
+            
+                string RegisteringUser = "insert into Users (userName,email,userPassword) values(@name,@email,@password);";
+                SqlCommand command = new SqlCommand(RegisteringUser, connection);
+                command.Parameters.AddWithValue("@name", name);
+                command.Parameters.AddWithValue("@email", email);
+                command.Parameters.AddWithValue("@password", password);
+                int rowaffected =command.ExecuteNonQuery();
+                if (rowaffected > 0)
+                {
+                    return true;
+                }
+
+            }
+            catch (Exception e)
+            {
+                // 12 catch the exception message if any occurs
+                Console.WriteLine(e.Message);
+            }
+            finally
+            {
+                // 13 after all we need to close the connection with database
+                connection.Close();
+            }
+            return false;
+
+
+
+
+
+            //// Check if a user with the given email already exists.
+            //if (users.Any(u => u.Email == email))
+            //{
+            //    return false; // User with this email already exists.
+            //}
+
+            //User newUser = new User(name, email, password);
+            //return true; // Registration successful.
         }
         
 
@@ -135,6 +168,7 @@ namespace cSharp_BankSystem
                     case "5":
                         Console.Clear();
                         Transfer();
+                        //Transfer();
                         break;
                     case "6":
                         Console.Clear();
@@ -164,13 +198,21 @@ namespace cSharp_BankSystem
                 //    Console.WriteLine("You must log in first.");
                 //    return;
                 //}
-
+                
                 Console.Write("Enter initial balance: ");
                 if (decimal.TryParse(Console.ReadLine(), out decimal initialBalance))
                 {
                     
                     Console.Write("Enter accountHolderID: ");
                     int accountHolderID = int.Parse(Console.ReadLine());
+
+                    int account = GetAccountByNumber(accountHolderID);
+
+                    if (account <= 0)
+                    {
+                        Console.WriteLine("User id  not found.");
+                        return;
+                    }
                     string Createraccount = "insert into accounts (balance,userID) values(@initialBalance,@accountHolderID);";
                     SqlCommand command = new SqlCommand(Createraccount, connection);
                     command.Parameters.AddWithValue("@initialBalance", initialBalance);
@@ -466,16 +508,18 @@ namespace cSharp_BankSystem
                 Console.WriteLine("Target account not found.");
                 return;
             }
-            //Console.WriteLine("Account holder name: {0}\nAccount number: {1}", targetAccount.AccountHolderName, targetAccount.AccountNumber);
             Console.Write("Enter the amount to transfer: ");
             if (!decimal.TryParse(Console.ReadLine(), out decimal amount) || amount <= 0)
             {
                 Console.WriteLine("Invalid transfer amount.");
                 return;
             }
+
+
             try
             {
                 connection.Open();
+                
 
 
                 string Updatebalance = "Update accounts set balance = balance - @amount where balance>@amount and accountsNumber = @sourceAccountNumber";
@@ -627,6 +671,42 @@ namespace cSharp_BankSystem
             Console.WriteLine($"Transaction History for Account {accountNumber}:");
             
         }
+        private int GetUserID(int UserID)
+        {
+
+            try
+            {
+                connection.Open();
+
+                using (SqlCommand command = new SqlCommand("select userID from Users WHERE userID = @userID", connection))
+                {
+                    command.Parameters.AddWithValue("@userID", UserID);
+
+
+                    SqlDataReader reader = command.ExecuteReader();
+                    //reader.Read();
+                    while (reader.Read())
+                    {
+                        int USERID = reader.GetInt32(reader.GetOrdinal("accountsNumber"));
+                        return USERID;
+                    }
+
+                    reader.Close();
+
+                }
+            }
+            catch (Exception e)
+            {
+                // 12 catch the exception message if any occurs
+                Console.WriteLine(e.Message);
+            }
+            finally
+            {
+                // 13 after all we need to close the connection with database
+                connection.Close();
+            }
+            return -1;
+        }
         private int GetAccountByNumber(int accountNumber)
         {
            
@@ -663,9 +743,139 @@ namespace cSharp_BankSystem
             }
             return -1;
         }
-        
 
-        
+        public void Transferr()
+        {
+
+
+            Console.Write("Enter the account number want to transfer from: ");
+            if (!int.TryParse(Console.ReadLine(), out int sourceAccountNumber))
+            {
+                Console.WriteLine("Invalid account number.");
+                return;
+            }
+
+            int sourceAccount = GetAccountByNumber(sourceAccountNumber);
+
+            
+
+            Console.Write("Enter the account number want to transfer to: ");
+            if (!int.TryParse(Console.ReadLine(), out int targetAccountNumber))
+            {
+                Console.WriteLine("Invalid target account number.");
+                return;
+            }
+
+            int targetAccount = GetAccountByNumber(targetAccountNumber);
+
+            
+            
+
+            connection.Open();
+            SqlTransaction transaction = connection.BeginTransaction();
+
+            Console.Write("Enter the amount to transfer: ");
+            if (!decimal.TryParse(Console.ReadLine(), out decimal amount) || amount <= 0)
+            {
+                Console.WriteLine("Invalid transfer amount.");
+                transaction.Rollback();
+                return;
+            }
+
+            try
+            {
+
+                if (sourceAccount <= 0 || targetAccount <= 0)
+                {
+                    transaction.Rollback();
+                    Console.WriteLine("one of accounts wrong");
+                    return;
+                }
+                string Updatebalance = "Update accounts set balance = balance - @amount where balance>@amount and accountsNumber = @sourceAccountNumber";
+                SqlCommand Command = new SqlCommand(Updatebalance, connection);
+                Command.Parameters.AddWithValue("@amount", amount);
+                Command.Parameters.AddWithValue("@sourceAccountNumber", sourceAccountNumber);
+                int rowaffected = Command.ExecuteNonQuery();
+                
+                    int Type = (int)TransactionType.Withdrawal;
+                    using (SqlCommand command = new SqlCommand("insert into transactions (amount,Ttype,accountsNumber) values (@amount,@Type,@sourceAccountNumber)", connection))
+                    {
+                        command.Parameters.AddWithValue("@amount", amount);
+                        command.Parameters.AddWithValue("@Type", Type);
+                        command.Parameters.AddWithValue("@sourceAccountNumber", sourceAccountNumber);
+                        int trowaffected = command.ExecuteNonQuery();
+                        if (trowaffected > 0)
+                        {
+                            Console.WriteLine("Transactionprocess inserted");
+                        }
+                    }
+                
+
+                string Updatebalances = "Update accounts set balance = balance + @amount where accountsNumber = @targetAccount";
+                SqlCommand Commands = new SqlCommand(Updatebalances, connection);
+                Commands.Parameters.AddWithValue("@amount", amount);
+                Commands.Parameters.AddWithValue("@targetAccount", targetAccount);
+                int rowsaffected = Commands.ExecuteNonQuery();
+                
+
+                    Console.WriteLine("Depositing trans successful");
+                    int tType = (int)TransactionType.Deposit;
+
+                    using (SqlCommand command = new SqlCommand("insert into transactions (amount,Ttype,accountsNumber) values (@amount,@tType,@targetAccount)", connection))
+                    {
+                        command.Parameters.AddWithValue("@amount", amount);
+                        command.Parameters.AddWithValue("@tType", tType);
+                        command.Parameters.AddWithValue("@targetAccount", targetAccount);
+                        int returns = Command.ExecuteNonQuery();
+                        if (returns > 0)
+                        {
+                            Console.WriteLine("Transection inserted");
+                        }
+                    }
+                
+
+
+                int Trype = (int)TransactionType.Transfer;
+                using (SqlCommand commmand = new SqlCommand("insert into transactions (amount,SrcAccNO,Ttype,TargetAccNO,accountsNumber) values (@amount,@sourceAccountNumber,@Trype,@targetAccount,@sourceAccountNumber)", connection))
+                {
+                    commmand.Parameters.AddWithValue("@amount", amount);
+                    commmand.Parameters.AddWithValue("@Trype", Trype);
+                    commmand.Parameters.AddWithValue("@targetAccount", targetAccount);
+                    commmand.Parameters.AddWithValue("@sourceAccountNumber", sourceAccountNumber);
+
+                    int rowaffecteds = commmand.ExecuteNonQuery();
+                    if (rowaffecteds > 0)
+                    {
+                        Console.WriteLine($"Transferred {amount} OMR from account {sourceAccountNumber} to account {targetAccountNumber}.");
+
+                    }
+
+                }
+                transaction.Commit();
+            }
+            catch (Exception e)
+            {
+                transaction.Rollback();
+                // 12 catch the exception message if any occurs
+                Console.WriteLine(e.Message);
+            }
+            finally
+            {
+                // 13 after all we need to close the connection with database
+                connection.Close();
+
+            }
+            //SaveUserData(); // Save the updated user data to the JSON file
+
+            //Console.WriteLine($"Source account balance: {sourceAccount.Balance} OMR");
+
+
+
+            return;
+        }
+
+
+
     }
 
 }
