@@ -167,7 +167,7 @@ namespace cSharp_BankSystem
                         break;
                     case "5":
                         Console.Clear();
-                        Transfer();
+                        Transferr();
                         //Transfer();
                         break;
                     case "6":
@@ -792,13 +792,13 @@ namespace cSharp_BankSystem
                     return;
                 }
                 string Updatebalance = "Update accounts set balance = balance - @amount where balance>@amount and accountsNumber = @sourceAccountNumber";
-                SqlCommand Command = new SqlCommand(Updatebalance, connection);
+                SqlCommand Command = new SqlCommand(Updatebalance, connection,transaction);
                 Command.Parameters.AddWithValue("@amount", amount);
                 Command.Parameters.AddWithValue("@sourceAccountNumber", sourceAccountNumber);
                 int rowaffected = Command.ExecuteNonQuery();
                 
                     int Type = (int)TransactionType.Withdrawal;
-                    using (SqlCommand command = new SqlCommand("insert into transactions (amount,Ttype,accountsNumber) values (@amount,@Type,@sourceAccountNumber)", connection))
+                    using (SqlCommand command = new SqlCommand("insert into transactions (amount,Ttype,accountsNumber) values (@amount,@Type,@sourceAccountNumber)", connection,transaction))
                     {
                         command.Parameters.AddWithValue("@amount", amount);
                         command.Parameters.AddWithValue("@Type", Type);
@@ -812,7 +812,7 @@ namespace cSharp_BankSystem
                 
 
                 string Updatebalances = "Update accounts set balance = balance + @amount where accountsNumber = @targetAccount";
-                SqlCommand Commands = new SqlCommand(Updatebalances, connection);
+                SqlCommand Commands = new SqlCommand(Updatebalances, connection, transaction);
                 Commands.Parameters.AddWithValue("@amount", amount);
                 Commands.Parameters.AddWithValue("@targetAccount", targetAccount);
                 int rowsaffected = Commands.ExecuteNonQuery();
@@ -821,7 +821,7 @@ namespace cSharp_BankSystem
                     Console.WriteLine("Depositing trans successful");
                     int tType = (int)TransactionType.Deposit;
 
-                    using (SqlCommand command = new SqlCommand("insert into transactions (amount,Ttype,accountsNumber) values (@amount,@tType,@targetAccount)", connection))
+                    using (SqlCommand command = new SqlCommand("insert into transactions (amount,Ttype,accountsNumber) values (@amount,@tType,@targetAccount)", connection, transaction))
                     {
                         command.Parameters.AddWithValue("@amount", amount);
                         command.Parameters.AddWithValue("@tType", tType);
@@ -836,7 +836,7 @@ namespace cSharp_BankSystem
 
 
                 int Trype = (int)TransactionType.Transfer;
-                using (SqlCommand commmand = new SqlCommand("insert into transactions (amount,SrcAccNO,Ttype,TargetAccNO,accountsNumber) values (@amount,@sourceAccountNumber,@Trype,@targetAccount,@sourceAccountNumber)", connection))
+                using (SqlCommand commmand = new SqlCommand("insert into transactions (amount,SrcAccNO,Ttype,TargetAccNO,accountsNumber) values (@amount,@sourceAccountNumber,@Trype,@targetAccount,@sourceAccountNumber)", connection, transaction))
                 {
                     commmand.Parameters.AddWithValue("@amount", amount);
                     commmand.Parameters.AddWithValue("@Trype", Trype);
